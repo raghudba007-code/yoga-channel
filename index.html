@@ -1,0 +1,1096 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Yoga Channel</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    * { box-sizing: border-box; }
+    .line-clamp-2 {
+      display: -webkit-box; -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical; overflow: hidden;
+    }
+    .line-clamp-1 {
+      display: -webkit-box; -webkit-line-clamp: 1;
+      -webkit-box-orient: vertical; overflow: hidden;
+    }
+    /* Modals */
+    .modal-wrap { display: none; }
+    .modal-wrap.open { display: flex; }
+    /* Dropdowns */
+    #channels-dropdown { display: none; }
+    #channels-dropdown.open { display: block; }
+    /* Cards */
+    .card-img-wrap { position: relative; padding-top: 56.25%; overflow: hidden; }
+    .card-img-wrap img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s; }
+    .card:hover .card-img-wrap img { transform: scale(1.05); }
+    .play-overlay {
+      position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(0,0,0,0.3); opacity: 0; transition: opacity 0.2s;
+    }
+    .card:hover .play-overlay { opacity: 1; }
+    /* Playlist count badge */
+    .playlist-count {
+      position: absolute; bottom: 0; right: 0;
+      background: rgba(0,0,0,0.8); color: #fff;
+      font-size: 0.7rem; font-weight: 600;
+      padding: 3px 8px; border-top-left-radius: 8px;
+    }
+    /* Sort tabs */
+    .sort-tab {
+      padding: 6px 16px; border-radius: 9999px;
+      font-size: 0.875rem; font-weight: 500; cursor: pointer;
+      border: 1px solid #e5e7eb; background: #fff; color: #374151;
+      transition: all 0.15s;
+    }
+    .sort-tab:hover { background: #f3f4f6; }
+    .sort-tab.active { background: #111827; color: #fff; border-color: #111827; }
+    .sort-tab:disabled { opacity: 0.5; cursor: not-allowed; }
+    /* Nav tabs */
+    .nav-tab {
+      padding: 12px 20px; font-size: 0.9rem; font-weight: 500;
+      color: #6b7280; border-bottom: 2px solid transparent;
+      cursor: pointer; transition: all 0.15s; white-space: nowrap;
+    }
+    .nav-tab:hover { color: #111827; }
+    .nav-tab.active { color: #111827; border-bottom-color: #111827; }
+    /* Spinners */
+    .spinner {
+      border: 3px solid rgba(255,255,255,0.3); border-top-color: #fff;
+      border-radius: 50%; width: 20px; height: 20px;
+      animation: spin 0.7s linear infinite; display: inline-block;
+    }
+    .mini-spinner {
+      border: 2px solid rgba(0,0,0,0.15); border-top-color: #dc2626;
+      border-radius: 50%; width: 14px; height: 14px;
+      animation: spin 0.7s linear infinite; display: inline-block;
+      vertical-align: middle; margin-right: 4px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Search */
+    #search-bar-wrap { display: none; }
+    #search-bar-wrap.open { display: block; }
+    #search-input:focus { outline: none; box-shadow: 0 0 0 2px #f87171; border-color: transparent; }
+    .search-highlight { background: #fef08a; border-radius: 2px; }
+  </style>
+</head>
+<body class="min-h-screen bg-gray-50">
+
+  <!-- ═══════════════════════════════════════════════
+       CONFIGURATION
+  ═══════════════════════════════════════════════ -->
+  <script>
+    const API_KEY = 'AIzaSyDUAyRJLReQBJX3jDsDfO9EI-9iwqnEf-8';
+
+    const CHANNELS = [
+      { name: 'Healthy Day Yoga',    handle: '@healthydayyoga',  isDefault: true },
+      { name: 'Yoga With Adriene',   handle: '@yogawithadriene'  },
+      { name: 'Boho Beautiful Yoga', handle: '@bohobeautiful'    },
+    ];
+  </script>
+  <!-- ═══════════════════════════════════════════════ -->
+
+  <!-- HEADER -->
+  <header class="sticky top-0 z-30 bg-gradient-to-r from-red-700 to-red-600 shadow-lg">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-16">
+
+        <div class="flex items-center gap-3 min-w-0">
+          <img id="channel-thumb" src="" alt=""
+            class="w-9 h-9 rounded-full object-cover border-2 border-white/40 flex-shrink-0 hidden" />
+          <div class="min-w-0">
+            <h1 id="channel-title" class="text-white font-bold text-base sm:text-lg truncate">Loading…</h1>
+            <p  id="channel-handle" class="text-red-200 text-xs truncate"></p>
+          </div>
+        </div>
+
+        <!-- Search icon button -->
+        <button id="search-toggle-btn"
+          class="hidden w-9 h-9 flex items-center justify-center rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors border border-white/20"
+          title="Search videos"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"/>
+          </svg>
+        </button>
+
+        <div class="relative flex-shrink-0">
+          <button id="channels-btn"
+            class="flex items-center gap-2 px-4 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-white text-sm font-medium border border-white/20 transition-colors"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+            </svg>
+            Other Channels
+            <svg id="chevron" class="w-4 h-4 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+            </svg>
+          </button>
+
+          <!-- Channels dropdown -->
+          <div id="channels-dropdown"
+            class="absolute right-0 top-full mt-2 w-72 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden z-50"
+          >
+            <p class="px-4 py-2 text-xs text-gray-500 font-medium uppercase tracking-wider border-b border-gray-100">
+              Other Channels
+            </p>
+            <ul id="channels-list" class="max-h-72 overflow-y-auto"></ul>
+            <div class="border-t border-gray-100 p-2">
+              <button id="add-channel-btn"
+                class="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-red-50 text-red-600 text-sm font-medium transition-colors"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                </svg>
+                Add New Channel
+              </button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Nav tabs -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div id="nav-tabs" class="hidden flex gap-1 border-t border-red-600/30">
+        <button class="nav-tab active text-white border-white" data-tab="videos"
+          style="color:#fff;border-bottom-color:#fff">Videos</button>
+        <button class="nav-tab" data-tab="playlists"
+          style="color:rgba(255,255,255,0.7)">Playlists</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+    <div id="error-box" class="hidden mb-6 p-4 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm"></div>
+
+    <!-- ── SEARCH BAR ───────────────────────────── -->
+    <div id="search-bar-wrap" class="mb-5">
+      <div class="relative">
+        <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none"
+          fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"/>
+        </svg>
+        <input id="search-input" type="text" placeholder="Search videos in this channel…"
+          class="w-full pl-10 pr-24 py-3 rounded-xl border border-gray-200 bg-white text-sm text-gray-800 placeholder-gray-400"
+          autocomplete="off"
+        />
+        <div class="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+          <button id="search-clear-btn"
+            class="hidden px-2 py-1 text-gray-400 hover:text-gray-600 transition-colors"
+            title="Clear search"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+          </button>
+          <button id="search-submit-btn"
+            class="px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-medium transition-colors flex items-center gap-1"
+          >
+            <span id="search-btn-label">Search</span>
+          </button>
+        </div>
+      </div>
+      <p class="mt-1.5 text-xs text-gray-400">
+        Type to filter loaded videos · Press <kbd class="px-1 py-0.5 rounded bg-gray-100 border border-gray-200 font-mono text-gray-500">Enter</kbd> or click Search to search <strong>all</strong> channel videos
+      </p>
+    </div>
+
+    <!-- Search results banner -->
+    <div id="search-results-banner" class="hidden mb-4 flex items-center justify-between px-4 py-2.5 rounded-xl bg-red-50 border border-red-100">
+      <p id="search-results-text" class="text-sm text-red-700"></p>
+      <button id="clear-full-search-btn" class="text-xs font-medium text-red-600 hover:text-red-800 transition-colors flex items-center gap-1">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+        Clear search
+      </button>
+    </div>
+
+    <!-- ── VIDEOS VIEW ───────────────────────────── -->
+    <div id="view-videos">
+      <div id="sort-bar" class="hidden mb-6 flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center gap-2">
+          <button class="sort-tab active" data-sort="latest">Latest</button>
+          <button class="sort-tab" data-sort="popular">Popular</button>
+          <button class="sort-tab" data-sort="oldest">Oldest</button>
+        </div>
+        <p id="status-bar" class="text-sm text-gray-500"></p>
+      </div>
+      <div id="video-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5"></div>
+      <div class="flex justify-center mt-10">
+        <button id="load-more-btn"
+          class="hidden px-8 py-3 rounded-xl bg-red-600 hover:bg-red-700 text-white font-medium transition-colors shadow-sm"
+        >Load more videos</button>
+      </div>
+    </div>
+
+    <!-- ── PLAYLISTS VIEW ────────────────────────── -->
+    <div id="view-playlists" class="hidden">
+      <div id="playlists-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5"></div>
+    </div>
+
+    <!-- ── PLAYLIST DETAIL VIEW ─────────────────── -->
+    <div id="view-playlist-detail" class="hidden">
+      <div class="flex items-center gap-4 mb-6">
+        <button id="back-btn"
+          class="flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 text-sm font-medium text-gray-700 transition-colors"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+          </svg>
+          Back to Playlists
+        </button>
+        <div>
+          <h2 id="playlist-detail-title" class="font-semibold text-gray-900 text-lg"></h2>
+          <p id="playlist-detail-count" class="text-sm text-gray-500"></p>
+        </div>
+      </div>
+      <div id="playlist-video-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5"></div>
+      <div class="flex justify-center mt-10">
+        <button id="playlist-load-more-btn"
+          class="hidden px-8 py-3 rounded-xl bg-red-600 hover:bg-red-700 text-white font-medium transition-colors shadow-sm"
+        >Load more videos</button>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ══════════════════════════════════════════════
+       VIDEO PLAYER MODAL
+  ══════════════════════════════════════════════ -->
+  <div id="video-modal"
+    class="modal-wrap fixed inset-0 z-50 items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+  >
+    <div class="relative w-full max-w-5xl bg-black rounded-2xl overflow-hidden shadow-2xl">
+      <div class="flex items-start justify-between px-4 py-3 bg-gray-900">
+        <h2 id="modal-title" class="text-white text-sm font-medium pr-8 line-clamp-2 leading-snug"></h2>
+        <button id="modal-close"
+          class="flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-full hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+        >
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+      <div class="relative" style="padding-top:56.25%;">
+        <iframe id="modal-iframe" src="" title="YouTube video"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowfullscreen class="absolute inset-0 w-full h-full border-0">
+        </iframe>
+      </div>
+      <div id="modal-date" class="px-4 py-3 bg-gray-900 text-gray-400 text-xs"></div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════
+       ADD CHANNEL MODAL
+  ══════════════════════════════════════════════ -->
+  <div id="add-channel-modal"
+    class="modal-wrap fixed inset-0 z-50 items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+  >
+    <div class="w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden">
+      <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+        <h3 class="font-semibold text-gray-900">Add New Channel</h3>
+        <button id="add-modal-close"
+          class="w-7 h-7 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-400 transition-colors"
+        >
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="px-6 py-5">
+        <label class="block text-sm font-medium text-gray-700 mb-1">YouTube Channel Handle</label>
+        <div class="flex gap-2">
+          <input id="add-channel-input" type="text" placeholder="@channelhandle"
+            class="flex-1 px-4 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-red-400 focus:border-transparent"
+          />
+          <button id="add-channel-submit"
+            class="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white text-sm font-medium transition-colors flex items-center gap-2"
+          >
+            <span id="add-btn-text">Add</span>
+          </button>
+        </div>
+        <p id="add-channel-error" class="hidden mt-2 text-xs text-red-500"></p>
+        <p class="mt-2 text-xs text-gray-400">Example: @yogawithadriene</p>
+
+        <!-- Preview after fetch -->
+        <div id="add-channel-preview" class="hidden mt-4 p-3 rounded-xl bg-gray-50 border border-gray-200 flex items-center gap-3">
+          <img id="preview-thumb" src="" alt="" class="w-10 h-10 rounded-full object-cover flex-shrink-0" />
+          <div class="min-w-0">
+            <p id="preview-name" class="text-sm font-semibold text-gray-900 truncate"></p>
+            <p id="preview-handle" class="text-xs text-gray-400"></p>
+          </div>
+          <svg class="w-5 h-5 text-green-500 ml-auto flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+          </svg>
+        </div>
+      </div>
+
+      <div class="px-6 pb-5 flex justify-end gap-2">
+        <button id="add-modal-cancel"
+          class="px-4 py-2 rounded-lg border border-gray-200 text-sm text-gray-600 hover:bg-gray-50 transition-colors"
+        >Cancel</button>
+        <button id="add-modal-save"
+          class="hidden px-4 py-2 rounded-lg bg-green-600 hover:bg-green-700 text-white text-sm font-medium transition-colors"
+        >Save Channel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════
+       APP LOGIC
+  ══════════════════════════════════════════════ -->
+  <script>
+    const YT_API = 'https://www.googleapis.com/youtube/v3';
+    const LS_KEY = 'yt_custom_channels';
+
+    // ── State ─────────────────────────────────────
+    let state = {
+      handle: null,
+      channelInfo: null,
+      // Videos tab
+      videos: [], viewCounts: {}, nextPageToken: null, totalResults: 0, sort: 'latest',
+      // Playlists tab
+      playlists: [],
+      // Playlist detail
+      activePlaylist: null, playlistVideos: [], playlistNextToken: null,
+      // UI
+      activeTab: 'videos', loading: false, sortLoading: false,
+    };
+
+    // ── Local storage channels ─────────────────────
+    function loadCustomChannels() {
+      try { return JSON.parse(localStorage.getItem(LS_KEY) || '[]'); }
+      catch { return []; }
+    }
+    function saveCustomChannels(list) {
+      localStorage.setItem(LS_KEY, JSON.stringify(list));
+    }
+    function getAllChannels() {
+      const custom = loadCustomChannels();
+      const handles = new Set(CHANNELS.map(c => c.handle));
+      return [...CHANNELS, ...custom.filter(c => !handles.has(c.handle))];
+    }
+    function removeCustomChannel(handle) {
+      const list = loadCustomChannels().filter(c => c.handle !== handle);
+      saveCustomChannels(list);
+    }
+
+    // ── Helpers ───────────────────────────────────
+    function getCurrentHandle() {
+      const p = new URLSearchParams(window.location.search);
+      return p.get('handle') || CHANNELS.find(c => c.isDefault)?.handle || CHANNELS[0].handle;
+    }
+    function formatDate(iso) {
+      return new Date(iso).toLocaleDateString('en-US', { year:'numeric', month:'short', day:'numeric' });
+    }
+    function formatViews(n) {
+      if (n >= 1_000_000) return (n/1_000_000).toFixed(1)+'M views';
+      if (n >= 1_000)     return (n/1_000).toFixed(1)+'K views';
+      return n+' views';
+    }
+    function escapeHtml(s) {
+      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+    async function apiFetch(endpoint, params) {
+      const url = new URL(`${YT_API}/${endpoint}`);
+      url.searchParams.set('key', API_KEY);
+      for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
+      const res = await fetch(url.toString());
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error?.message || `API error ${res.status}`);
+      return data;
+    }
+
+    // ── YouTube API ───────────────────────────────
+    async function resolveChannel(handle) {
+      const forHandle = handle.startsWith('@') ? handle.slice(1) : handle;
+      const data = await apiFetch('channels', { part:'id,snippet,contentDetails', forHandle });
+      const item = data.items?.[0];
+      if (!item) throw new Error(`Channel "${handle}" not found.`);
+      return {
+        channelId: item.id,
+        title: item.snippet.title,
+        thumbnail: item.snippet.thumbnails?.high?.url || item.snippet.thumbnails?.default?.url || '',
+        uploadsPlaylistId: item.contentDetails.relatedPlaylists.uploads,
+      };
+    }
+
+    async function fetchVideos(playlistId, pageToken = null, maxResults = 24) {
+      const params = { part:'snippet', playlistId, maxResults };
+      if (pageToken) params.pageToken = pageToken;
+      const data = await apiFetch('playlistItems', params);
+      const videos = (data.items || [])
+        .filter(i => i.snippet.resourceId?.videoId)
+        .map(i => ({
+          videoId:     i.snippet.resourceId.videoId,
+          title:       i.snippet.title,
+          publishedAt: i.snippet.publishedAt,
+          thumbnail:   i.snippet.thumbnails?.maxres?.url || i.snippet.thumbnails?.high?.url ||
+                       i.snippet.thumbnails?.medium?.url || i.snippet.thumbnails?.default?.url || '',
+        }));
+      return { videos, nextPageToken: data.nextPageToken, totalResults: data.pageInfo?.totalResults || 0 };
+    }
+
+    async function fetchPlaylists(channelId) {
+      const data = await apiFetch('playlists', {
+        part: 'snippet,contentDetails', channelId, maxResults: '50',
+      });
+      return (data.items || []).map(item => ({
+        playlistId:  item.id,
+        title:       item.snippet.title,
+        description: item.snippet.description,
+        thumbnail:   item.snippet.thumbnails?.maxres?.url || item.snippet.thumbnails?.high?.url ||
+                     item.snippet.thumbnails?.medium?.url || item.snippet.thumbnails?.default?.url || '',
+        videoCount:  item.contentDetails.itemCount,
+        publishedAt: item.snippet.publishedAt,
+      }));
+    }
+
+    async function fetchViewCounts(videoIds) {
+      const counts = {};
+      for (let i = 0; i < videoIds.length; i += 50) {
+        const batch = videoIds.slice(i, i + 50);
+        const data = await apiFetch('videos', { part:'statistics', id: batch.join(',') });
+        for (const item of (data.items || []))
+          counts[item.id] = parseInt(item.statistics?.viewCount || '0', 10);
+      }
+      return counts;
+    }
+
+    // ── Sorting ───────────────────────────────────
+    function getSortedVideos(list) {
+      const copy = [...list];
+      if (state.sort === 'oldest')  copy.sort((a,b) => new Date(a.publishedAt) - new Date(b.publishedAt));
+      if (state.sort === 'popular') copy.sort((a,b) => (state.viewCounts[b.videoId]||0) - (state.viewCounts[a.videoId]||0));
+      return copy;
+    }
+
+    // ── Card factories ────────────────────────────
+    function makeVideoCard(video) {
+      const vc = state.viewCounts[video.videoId];
+      const el = document.createElement('article');
+      el.className = 'card flex flex-col rounded-2xl overflow-hidden bg-white shadow-sm hover:shadow-md transition-shadow border border-gray-100 cursor-pointer';
+      el.innerHTML = `
+        <div class="card-img-wrap bg-gray-100">
+          <img src="${video.thumbnail}" alt="${escapeHtml(video.title)}" loading="lazy"/>
+          <div class="play-overlay">
+            <div class="w-14 h-14 rounded-full bg-white/90 flex items-center justify-center shadow-lg">
+              <svg class="w-6 h-6 text-red-600 ml-1" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+            </div>
+          </div>
+        </div>
+        <div class="flex flex-col flex-1 p-4 gap-2">
+          <h3 class="text-sm font-semibold text-gray-900 line-clamp-2 leading-snug hover:text-red-600 transition-colors">
+            ${escapeHtml(video.title)}
+          </h3>
+          <div class="flex items-center justify-between mt-auto">
+            <p class="text-xs text-gray-500">${formatDate(video.publishedAt)}</p>
+            ${vc !== undefined ? `<p class="text-xs text-gray-400">${formatViews(vc)}</p>` : ''}
+          </div>
+          <button class="watch-btn mt-2 w-full py-2 px-4 rounded-lg bg-red-600 hover:bg-red-700 text-white text-sm font-medium transition-colors">Watch</button>
+        </div>`;
+      el.querySelector('.watch-btn').addEventListener('click', e => { e.stopPropagation(); openVideoModal(video); });
+      el.addEventListener('click', () => openVideoModal(video));
+      return el;
+    }
+
+    function makePlaylistCard(pl) {
+      const el = document.createElement('article');
+      el.className = 'card flex flex-col rounded-2xl overflow-hidden bg-white shadow-sm hover:shadow-md transition-shadow border border-gray-100 cursor-pointer';
+      el.innerHTML = `
+        <div class="card-img-wrap bg-gray-100">
+          <img src="${pl.thumbnail}" alt="${escapeHtml(pl.title)}" loading="lazy"/>
+          <div class="play-overlay">
+            <div class="w-14 h-14 rounded-full bg-white/90 flex items-center justify-center shadow-lg">
+              <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
+              </svg>
+            </div>
+          </div>
+          <div class="playlist-count">${pl.videoCount} videos</div>
+        </div>
+        <div class="flex flex-col flex-1 p-4 gap-1">
+          <h3 class="text-sm font-semibold text-gray-900 line-clamp-2 leading-snug hover:text-red-600 transition-colors">
+            ${escapeHtml(pl.title)}
+          </h3>
+          <p class="text-xs text-gray-400 line-clamp-1 mt-auto">${escapeHtml(pl.description || '')}</p>
+          <button class="view-btn mt-2 w-full py-2 px-4 rounded-lg bg-red-600 hover:bg-red-700 text-white text-sm font-medium transition-colors">View Playlist</button>
+        </div>`;
+      el.querySelector('.view-btn').addEventListener('click', e => { e.stopPropagation(); openPlaylistDetail(pl); });
+      el.addEventListener('click', () => openPlaylistDetail(pl));
+      return el;
+    }
+
+    function makeSkeletons(count = 8) {
+      return Array.from({ length: count }).map(() => {
+        const d = document.createElement('div');
+        d.className = 'rounded-2xl overflow-hidden bg-white shadow-sm border border-gray-100 animate-pulse';
+        d.innerHTML = `<div class="aspect-video bg-gray-200"></div>
+          <div class="p-4 space-y-3">
+            <div class="h-3 bg-gray-200 rounded w-full"></div>
+            <div class="h-3 bg-gray-200 rounded w-3/4"></div>
+            <div class="h-2 bg-gray-100 rounded w-1/3 mt-2"></div>
+            <div class="h-8 bg-gray-200 rounded-lg mt-2"></div>
+          </div>`;
+        return d;
+      });
+    }
+
+    // ── View switching ────────────────────────────
+    function showView(name) {
+      ['videos','playlists','playlist-detail'].forEach(v => {
+        document.getElementById(`view-${v}`).classList.toggle('hidden', v !== name);
+      });
+      // Update nav tab styles
+      document.querySelectorAll('.nav-tab').forEach(btn => {
+        const active = btn.dataset.tab === name || (name === 'playlist-detail' && btn.dataset.tab === 'playlists');
+        btn.style.color = active ? '#fff' : 'rgba(255,255,255,0.7)';
+        btn.style.borderBottomColor = active ? '#fff' : 'transparent';
+      });
+    }
+
+    // ── Render videos tab ─────────────────────────
+    function renderVideos() {
+      const grid = document.getElementById('video-grid');
+      grid.innerHTML = '';
+      getSortedVideos(state.videos).forEach(v => grid.appendChild(makeVideoCard(v)));
+    }
+
+    function updateStatusBar() {
+      const el = document.getElementById('status-bar');
+      el.textContent = state.totalResults > state.videos.length
+        ? `Showing ${state.videos.length} of ${state.totalResults} videos`
+        : `${state.videos.length} videos`;
+    }
+
+    function updateSortTabs() {
+      document.querySelectorAll('.sort-tab').forEach(btn =>
+        btn.classList.toggle('active', btn.dataset.sort === state.sort)
+      );
+    }
+
+    // ── Render playlists tab ──────────────────────
+    function renderPlaylists() {
+      const grid = document.getElementById('playlists-grid');
+      grid.innerHTML = '';
+      if (state.playlists.length === 0) {
+        grid.innerHTML = '<p class="col-span-4 text-center py-16 text-gray-400">No public playlists found for this channel.</p>';
+        return;
+      }
+      state.playlists.forEach(pl => grid.appendChild(makePlaylistCard(pl)));
+    }
+
+    // ── Playlist detail ───────────────────────────
+    async function openPlaylistDetail(pl) {
+      state.activePlaylist = pl;
+      state.playlistVideos = [];
+      state.playlistNextToken = null;
+
+      document.getElementById('playlist-detail-title').textContent = pl.title;
+      document.getElementById('playlist-detail-count').textContent = `${pl.videoCount} videos`;
+
+      const grid = document.getElementById('playlist-video-grid');
+      grid.innerHTML = '';
+      makeSkeletons(8).forEach(s => grid.appendChild(s));
+      document.getElementById('playlist-load-more-btn').classList.add('hidden');
+
+      showView('playlist-detail');
+      state.activeTab = 'playlists';
+
+      try {
+        const result = await fetchVideos(pl.playlistId, null, 24);
+        state.playlistVideos = result.videos;
+        state.playlistNextToken = result.nextPageToken;
+
+        grid.innerHTML = '';
+        state.playlistVideos.forEach(v => grid.appendChild(makeVideoCard(v)));
+
+        if (state.playlistNextToken)
+          document.getElementById('playlist-load-more-btn').classList.remove('hidden');
+      } catch (err) {
+        grid.innerHTML = `<p class="col-span-4 text-red-500 text-sm">${escapeHtml(err.message)}</p>`;
+      }
+    }
+
+    document.getElementById('back-btn').addEventListener('click', () => {
+      showView('playlists');
+    });
+
+    document.getElementById('playlist-load-more-btn').addEventListener('click', async function() {
+      if (!state.playlistNextToken) return;
+      this.innerHTML = '<span class="spinner"></span>';
+      this.disabled = true;
+      try {
+        const result = await fetchVideos(state.activePlaylist.playlistId, state.playlistNextToken, 24);
+        state.playlistVideos.push(...result.videos);
+        state.playlistNextToken = result.nextPageToken;
+        const grid = document.getElementById('playlist-video-grid');
+        result.videos.forEach(v => grid.appendChild(makeVideoCard(v)));
+        if (!state.playlistNextToken) this.classList.add('hidden');
+      } catch (err) { showError(err.message); }
+      finally {
+        this.innerHTML = 'Load more videos';
+        this.disabled = false;
+      }
+    });
+
+    // ── Header render ─────────────────────────────
+    function renderHeader(info, handle) {
+      document.title = `${info.title} – Videos`;
+      document.getElementById('channel-title').textContent = info.title;
+      document.getElementById('channel-handle').textContent = handle;
+      if (info.thumbnail) {
+        const img = document.getElementById('channel-thumb');
+        img.src = info.thumbnail; img.alt = info.title;
+        img.classList.remove('hidden');
+      }
+    }
+
+    // ── Channels dropdown ─────────────────────────
+    function renderChannelsList() {
+      const current = state.handle;
+      const all = getAllChannels().filter(c => c.handle !== current);
+      const custom = new Set(loadCustomChannels().map(c => c.handle));
+      const list = document.getElementById('channels-list');
+
+      if (all.length === 0) {
+        list.innerHTML = '<li class="px-4 py-3 text-sm text-gray-400">No other channels yet.</li>';
+        return;
+      }
+      list.innerHTML = all.map(ch => `
+        <li class="group relative">
+          <button data-handle="${ch.handle}"
+            class="channel-item w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors text-left"
+          >
+            <div class="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+              ${ch.thumbnail
+                ? `<img src="${ch.thumbnail}" class="w-8 h-8 rounded-full object-cover" alt="${escapeHtml(ch.name)}" />`
+                : `<svg class="w-4 h-4 text-red-600" fill="currentColor" viewBox="0 0 24 24"><path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"/></svg>`
+              }
+            </div>
+            <div class="min-w-0 flex-1">
+              <p class="text-sm font-medium text-gray-900 truncate group-hover:text-red-600 transition-colors">${escapeHtml(ch.name)}</p>
+              <p class="text-xs text-gray-400">${ch.handle}</p>
+            </div>
+            ${custom.has(ch.handle)
+              ? `<button data-del="${ch.handle}" class="del-btn flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-full hover:bg-red-100 text-gray-300 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100" title="Remove">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/>
+                  </svg>
+                </button>`
+              : `<svg class="w-4 h-4 text-gray-300 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+                </svg>`
+            }
+          </button>
+        </li>
+      `).join('');
+
+      list.querySelectorAll('.channel-item').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const url = `${location.pathname}?handle=${encodeURIComponent(btn.dataset.handle)}`;
+          window.open(url, '_blank', 'noopener,noreferrer');
+          closeDropdown();
+        });
+      });
+      list.querySelectorAll('.del-btn').forEach(btn => {
+        btn.addEventListener('click', e => {
+          e.stopPropagation();
+          removeCustomChannel(btn.dataset.del);
+          renderChannelsList();
+        });
+      });
+    }
+
+    function closeDropdown() {
+      document.getElementById('channels-dropdown').classList.remove('open');
+      document.getElementById('chevron').style.transform = '';
+    }
+
+    document.getElementById('channels-btn').addEventListener('click', e => {
+      e.stopPropagation();
+      const dd = document.getElementById('channels-dropdown');
+      const open = dd.classList.toggle('open');
+      document.getElementById('chevron').style.transform = open ? 'rotate(180deg)' : '';
+    });
+    document.addEventListener('click', closeDropdown);
+
+    // ── Add channel modal ─────────────────────────
+    let pendingChannel = null; // resolved channel info waiting to be saved
+
+    function openAddModal() {
+      document.getElementById('add-channel-input').value = '';
+      document.getElementById('add-channel-error').classList.add('hidden');
+      document.getElementById('add-channel-preview').classList.add('hidden');
+      document.getElementById('add-modal-save').classList.add('hidden');
+      document.getElementById('add-btn-text').textContent = 'Add';
+      pendingChannel = null;
+      document.getElementById('add-channel-modal').classList.add('open');
+      document.body.style.overflow = 'hidden';
+      setTimeout(() => document.getElementById('add-channel-input').focus(), 50);
+    }
+    function closeAddModal() {
+      document.getElementById('add-channel-modal').classList.remove('open');
+      document.body.style.overflow = '';
+    }
+
+    document.getElementById('add-channel-btn').addEventListener('click', e => {
+      e.stopPropagation();
+      closeDropdown();
+      openAddModal();
+    });
+    document.getElementById('add-modal-close').addEventListener('click', closeAddModal);
+    document.getElementById('add-modal-cancel').addEventListener('click', closeAddModal);
+    document.getElementById('add-channel-modal').addEventListener('click', function(e) {
+      if (e.target === this) closeAddModal();
+    });
+
+    // "Add" button → resolve channel
+    document.getElementById('add-channel-submit').addEventListener('click', async () => {
+      const raw = document.getElementById('add-channel-input').value.trim();
+      if (!raw) return;
+      const handle = raw.startsWith('@') ? raw : '@' + raw;
+
+      const errEl   = document.getElementById('add-channel-error');
+      const preview = document.getElementById('add-channel-preview');
+      const saveBtn = document.getElementById('add-modal-save');
+      const btnText = document.getElementById('add-btn-text');
+
+      errEl.classList.add('hidden');
+      preview.classList.add('hidden');
+      saveBtn.classList.add('hidden');
+      btnText.innerHTML = '<span class="mini-spinner" style="border-top-color:#fff"></span>';
+
+      try {
+        const info = await resolveChannel(handle);
+        pendingChannel = { name: info.title, handle, thumbnail: info.thumbnail };
+
+        document.getElementById('preview-thumb').src   = info.thumbnail;
+        document.getElementById('preview-name').textContent   = info.title;
+        document.getElementById('preview-handle').textContent = handle;
+        preview.classList.remove('hidden');
+        saveBtn.classList.remove('hidden');
+        btnText.textContent = 'Add';
+      } catch (err) {
+        errEl.textContent = err.message;
+        errEl.classList.remove('hidden');
+        btnText.textContent = 'Add';
+      }
+    });
+
+    // Allow pressing Enter in the input
+    document.getElementById('add-channel-input').addEventListener('keydown', e => {
+      if (e.key === 'Enter') document.getElementById('add-channel-submit').click();
+    });
+
+    // "Save Channel" button
+    document.getElementById('add-modal-save').addEventListener('click', () => {
+      if (!pendingChannel) return;
+      const existing = loadCustomChannels();
+      const allHandles = new Set([...CHANNELS.map(c => c.handle), ...existing.map(c => c.handle)]);
+      if (!allHandles.has(pendingChannel.handle)) {
+        saveCustomChannels([...existing, pendingChannel]);
+      }
+      renderChannelsList();
+      closeAddModal();
+    });
+
+    // ── Video modal ───────────────────────────────
+    function openVideoModal(video) {
+      document.getElementById('modal-title').textContent = video.title;
+      document.getElementById('modal-date').textContent = formatDate(video.publishedAt);
+      document.getElementById('modal-iframe').src =
+        `https://www.youtube-nocookie.com/embed/${video.videoId}?autoplay=1&rel=0&modestbranding=1`;
+      document.getElementById('video-modal').classList.add('open');
+      document.body.style.overflow = 'hidden';
+    }
+    function closeVideoModal() {
+      document.getElementById('video-modal').classList.remove('open');
+      document.getElementById('modal-iframe').src = '';
+      document.body.style.overflow = '';
+    }
+    document.getElementById('modal-close').addEventListener('click', closeVideoModal);
+    document.getElementById('video-modal').addEventListener('click', function(e) { if (e.target===this) closeVideoModal(); });
+    document.addEventListener('keydown', e => { if (e.key==='Escape') { closeVideoModal(); closeAddModal(); } });
+
+    // ── Nav tabs ──────────────────────────────────
+    document.querySelectorAll('.nav-tab').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const tab = btn.dataset.tab;
+        if (tab === state.activeTab) return;
+        state.activeTab = tab;
+        showView(tab);
+
+        if (tab === 'playlists' && state.playlists.length === 0) {
+          const grid = document.getElementById('playlists-grid');
+          grid.innerHTML = '';
+          makeSkeletons(8).forEach(s => grid.appendChild(s));
+          try {
+            state.playlists = await fetchPlaylists(state.channelInfo.channelId);
+            renderPlaylists();
+          } catch (err) {
+            showError(err.message);
+          }
+        }
+      });
+    });
+
+    // ── Sort tabs ─────────────────────────────────
+    document.querySelectorAll('.sort-tab').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const sort = btn.dataset.sort;
+        if (sort === state.sort || state.sortLoading) return;
+
+        if (sort === 'popular') {
+          const missing = state.videos.filter(v => state.viewCounts[v.videoId] === undefined).map(v => v.videoId);
+          if (missing.length > 0) {
+            state.sortLoading = true;
+            document.querySelectorAll('.sort-tab').forEach(b => b.disabled = true);
+            btn.innerHTML = '<span class="mini-spinner"></span> Popular';
+            try {
+              Object.assign(state.viewCounts, await fetchViewCounts(missing));
+            } catch (err) {
+              showError('Could not load view counts: ' + err.message);
+              state.sortLoading = false;
+              document.querySelectorAll('.sort-tab').forEach(b => b.disabled = false);
+              btn.textContent = 'Popular';
+              return;
+            }
+            state.sortLoading = false;
+            document.querySelectorAll('.sort-tab').forEach(b => b.disabled = false);
+            btn.textContent = 'Popular';
+          }
+        }
+        state.sort = sort;
+        updateSortTabs();
+        renderVideos();
+      });
+    });
+
+    // ── Load more (videos tab) ────────────────────
+    document.getElementById('load-more-btn').addEventListener('click', async function() {
+      if (state.loading || !state.nextPageToken) return;
+      state.loading = true;
+      this.innerHTML = '<span class="spinner"></span>';
+      this.disabled = true;
+      try {
+        const result = await fetchVideos(state.channelInfo.uploadsPlaylistId, state.nextPageToken);
+        if (state.sort === 'popular') {
+          Object.assign(state.viewCounts, await fetchViewCounts(result.videos.map(v => v.videoId)));
+        }
+        state.videos.push(...result.videos);
+        state.nextPageToken = result.nextPageToken;
+        renderVideos();
+        updateStatusBar();
+        if (!state.nextPageToken) this.classList.add('hidden');
+      } catch (err) { showError(err.message); }
+      finally { state.loading = false; this.innerHTML = 'Load more videos'; this.disabled = false; }
+    });
+
+    // ── Search ────────────────────────────────────
+    let searchState = { query: '', mode: 'idle' }; // mode: idle | filter | full
+
+    async function searchChannelVideos(channelId, query) {
+      const data = await apiFetch('search', {
+        part: 'snippet', channelId, q: query,
+        type: 'video', maxResults: '50', order: 'relevance',
+      });
+      return (data.items || []).map(i => ({
+        videoId:     i.id.videoId,
+        title:       i.snippet.title,
+        publishedAt: i.snippet.publishedAt,
+        thumbnail:   i.snippet.thumbnails?.high?.url || i.snippet.thumbnails?.medium?.url || i.snippet.thumbnails?.default?.url || '',
+      }));
+    }
+
+    function highlightMatch(text, query) {
+      if (!query) return escapeHtml(text);
+      const escaped = escapeHtml(text);
+      const escapedQ = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      return escaped.replace(new RegExp(`(${escapedQ})`, 'gi'),
+        '<mark class="search-highlight">$1</mark>');
+    }
+
+    function renderSearchResults(videos, query, isFull) {
+      const grid = document.getElementById('video-grid');
+      grid.innerHTML = '';
+
+      if (videos.length === 0) {
+        grid.innerHTML = `
+          <div class="col-span-4 flex flex-col items-center py-20 text-gray-400">
+            <svg class="w-14 h-14 mb-3 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"/>
+            </svg>
+            <p class="text-lg font-medium">No videos found</p>
+            <p class="text-sm mt-1">Try a different keyword</p>
+          </div>`;
+        return;
+      }
+
+      videos.forEach(v => {
+        const vc = state.viewCounts[v.videoId];
+        const el = document.createElement('article');
+        el.className = 'card flex flex-col rounded-2xl overflow-hidden bg-white shadow-sm hover:shadow-md transition-shadow border border-gray-100 cursor-pointer';
+        el.innerHTML = `
+          <div class="card-img-wrap bg-gray-100">
+            <img src="${v.thumbnail}" alt="${escapeHtml(v.title)}" loading="lazy"/>
+            <div class="play-overlay">
+              <div class="w-14 h-14 rounded-full bg-white/90 flex items-center justify-center shadow-lg">
+                <svg class="w-6 h-6 text-red-600 ml-1" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+              </div>
+            </div>
+          </div>
+          <div class="flex flex-col flex-1 p-4 gap-2">
+            <h3 class="text-sm font-semibold text-gray-900 line-clamp-2 leading-snug hover:text-red-600 transition-colors">
+              ${highlightMatch(v.title, query)}
+            </h3>
+            <div class="flex items-center justify-between mt-auto">
+              <p class="text-xs text-gray-500">${formatDate(v.publishedAt)}</p>
+              ${vc !== undefined ? `<p class="text-xs text-gray-400">${formatViews(vc)}</p>` : ''}
+            </div>
+            <button class="watch-btn mt-2 w-full py-2 px-4 rounded-lg bg-red-600 hover:bg-red-700 text-white text-sm font-medium transition-colors">Watch</button>
+          </div>`;
+        el.querySelector('.watch-btn').addEventListener('click', e => { e.stopPropagation(); openVideoModal(v); });
+        el.addEventListener('click', () => openVideoModal(v));
+        grid.appendChild(el);
+      });
+
+      // Results banner
+      const banner = document.getElementById('search-results-banner');
+      const text   = document.getElementById('search-results-text');
+      text.textContent = isFull
+        ? `Found ${videos.length} videos across the channel for "${query}"`
+        : `${videos.length} loaded video${videos.length !== 1 ? 's' : ''} match "${query}"`;
+      banner.classList.remove('hidden');
+
+      // Hide sort + load more while searching
+      document.getElementById('sort-bar').classList.add('hidden');
+      document.getElementById('load-more-btn').classList.add('hidden');
+    }
+
+    function clearSearch() {
+      searchState = { query: '', mode: 'idle' };
+      document.getElementById('search-input').value = '';
+      document.getElementById('search-clear-btn').classList.add('hidden');
+      document.getElementById('search-results-banner').classList.add('hidden');
+      document.getElementById('search-btn-label').textContent = 'Search';
+      renderVideos();
+      updateStatusBar();
+      document.getElementById('sort-bar').classList.remove('hidden');
+      if (state.nextPageToken) document.getElementById('load-more-btn').classList.remove('hidden');
+    }
+
+    // Live filter as user types
+    document.getElementById('search-input').addEventListener('input', function () {
+      const q = this.value.trim();
+      document.getElementById('search-clear-btn').classList.toggle('hidden', q === '');
+
+      if (q === '') { clearSearch(); return; }
+
+      searchState.query = q;
+      searchState.mode  = 'filter';
+
+      const filtered = state.videos.filter(v => v.title.toLowerCase().includes(q.toLowerCase()));
+      renderSearchResults(filtered, q, false);
+    });
+
+    // Enter / Search button → full YouTube search
+    async function runFullSearch() {
+      const q = document.getElementById('search-input').value.trim();
+      if (!q || !state.channelInfo) return;
+
+      searchState.query = q;
+      searchState.mode  = 'full';
+
+      const label = document.getElementById('search-btn-label');
+      label.innerHTML = '<span class="mini-spinner" style="border-top-color:#fff;width:12px;height:12px;border-width:2px"></span>';
+      document.getElementById('search-submit-btn').disabled = true;
+
+      const grid = document.getElementById('video-grid');
+      grid.innerHTML = '';
+      makeSkeletons(6).forEach(s => grid.appendChild(s));
+      document.getElementById('search-results-banner').classList.add('hidden');
+
+      try {
+        const results = await searchChannelVideos(state.channelInfo.channelId, q);
+        renderSearchResults(results, q, true);
+      } catch (err) {
+        showError('Search failed: ' + err.message);
+        clearSearch();
+      } finally {
+        label.textContent = 'Search';
+        document.getElementById('search-submit-btn').disabled = false;
+      }
+    }
+
+    document.getElementById('search-input').addEventListener('keydown', e => {
+      if (e.key === 'Enter') runFullSearch();
+    });
+    document.getElementById('search-submit-btn').addEventListener('click', runFullSearch);
+    document.getElementById('search-clear-btn').addEventListener('click', clearSearch);
+    document.getElementById('clear-full-search-btn').addEventListener('click', clearSearch);
+
+    // ── Utility ───────────────────────────────────
+    function showError(msg) {
+      const el = document.getElementById('error-box');
+      el.textContent = msg; el.classList.remove('hidden');
+    }
+
+    // ── Bootstrap ─────────────────────────────────
+    async function init() {
+      if (!API_KEY || API_KEY === 'YOUR_API_KEY_HERE') {
+        showError('⚠ API key not set. Open this HTML file, find API_KEY near the top, and paste your YouTube Data API v3 key.');
+        document.getElementById('channel-title').textContent = 'Setup required';
+        return;
+      }
+
+      state.handle = getCurrentHandle();
+      renderChannelsList();
+
+      // Skeleton loading
+      const grid = document.getElementById('video-grid');
+      grid.innerHTML = '';
+      makeSkeletons(8).forEach(s => grid.appendChild(s));
+
+      try {
+        state.channelInfo = await resolveChannel(state.handle);
+        renderHeader(state.channelInfo, state.handle);
+
+        const result = await fetchVideos(state.channelInfo.uploadsPlaylistId);
+        state.videos = result.videos;
+        state.nextPageToken = result.nextPageToken;
+        state.totalResults = result.totalResults;
+
+        renderVideos();
+        updateStatusBar();
+        updateSortTabs();
+
+        document.getElementById('sort-bar').classList.remove('hidden');
+        document.getElementById('nav-tabs').classList.remove('hidden');
+        document.getElementById('search-bar-wrap').classList.add('open');
+        document.getElementById('search-toggle-btn').classList.remove('hidden');
+        if (state.nextPageToken)
+          document.getElementById('load-more-btn').classList.remove('hidden');
+      } catch (err) {
+        grid.innerHTML = '';
+        showError('Error: ' + err.message);
+        document.getElementById('channel-title').textContent = 'Error loading channel';
+      }
+    }
+
+    init();
+  </script>
+</body>
+</html>
