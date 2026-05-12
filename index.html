@@ -75,6 +75,21 @@
     #search-bar-wrap.open { display: block; }
     #search-input:focus { outline: none; box-shadow: 0 0 0 2px #f87171; border-color: transparent; }
     .search-highlight { background: #fef08a; border-radius: 2px; }
+
+    /* Add-to-playlist popup */
+    .atp-popup { display:none; position:absolute; z-index:100; top:8px; right:8px;
+      width:200px; background:#fff; border-radius:12px; box-shadow:0 8px 24px rgba(0,0,0,0.15);
+      border:1px solid #e5e7eb; overflow:hidden; }
+    .atp-popup.open { display:block; }
+    .add-btn {
+      position:absolute; top:8px; right:8px; z-index:10;
+      width:28px; height:28px; border-radius:50%;
+      background:rgba(0,0,0,0.55); color:#fff;
+      display:flex; align-items:center; justify-content:center;
+      opacity:0; transition:opacity 0.2s; cursor:pointer; border:none;
+    }
+    .card:hover .add-btn { opacity:1; }
+    .add-btn:hover { background:rgba(220,38,38,0.85); }
   </style>
 </head>
 <body class="min-h-screen bg-gray-50">
@@ -166,10 +181,12 @@
     <!-- Nav tabs -->
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div id="nav-tabs" class="hidden flex gap-1 border-t border-red-600/30">
-        <button class="nav-tab active text-white border-white" data-tab="videos"
+        <button class="nav-tab active" data-tab="videos"
           style="color:#fff;border-bottom-color:#fff">Videos</button>
         <button class="nav-tab" data-tab="playlists"
           style="color:rgba(255,255,255,0.7)">Playlists</button>
+        <button class="nav-tab" data-tab="my-playlists"
+          style="color:rgba(255,255,255,0.7)">⭐ My Playlists</button>
       </div>
     </div>
   </header>
@@ -244,6 +261,50 @@
     <!-- ── PLAYLISTS VIEW ────────────────────────── -->
     <div id="view-playlists" class="hidden">
       <div id="playlists-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5"></div>
+    </div>
+
+    <!-- ── MY PLAYLISTS VIEW ────────────────────── -->
+    <div id="view-my-playlists" class="hidden">
+      <div class="flex items-center justify-between mb-6">
+        <h2 class="text-xl font-bold text-gray-900">My Playlists</h2>
+        <button id="create-playlist-btn"
+          class="flex items-center gap-2 px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-sm font-medium transition-colors shadow-sm"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+          </svg>
+          New Playlist
+        </button>
+      </div>
+      <div id="my-playlists-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5"></div>
+    </div>
+
+    <!-- ── MY PLAYLIST DETAIL VIEW ──────────────── -->
+    <div id="view-my-playlist-detail" class="hidden">
+      <div class="flex items-center gap-4 mb-6 flex-wrap">
+        <button id="my-playlist-back-btn"
+          class="flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 text-sm font-medium text-gray-700 transition-colors"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+          </svg>
+          Back
+        </button>
+        <div class="flex-1 min-w-0">
+          <h2 id="my-playlist-title" class="font-bold text-gray-900 text-xl truncate"></h2>
+          <p id="my-playlist-count" class="text-sm text-gray-500"></p>
+        </div>
+        <button id="my-playlist-rename-btn"
+          class="px-3 py-2 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 text-sm text-gray-600 transition-colors"
+        >✏️ Rename</button>
+        <button id="my-playlist-delete-btn"
+          class="px-3 py-2 rounded-lg border border-red-200 bg-white hover:bg-red-50 text-sm text-red-600 transition-colors"
+        >🗑 Delete Playlist</button>
+      </div>
+      <div id="my-playlist-video-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5"></div>
+      <p id="my-playlist-empty" class="hidden text-center py-20 text-gray-400">
+        No videos yet. Browse videos and click <strong>+</strong> to add them here.
+      </p>
     </div>
 
     <!-- ── PLAYLIST DETAIL VIEW ─────────────────── -->
@@ -370,6 +431,41 @@
       </div>
     </div>
   </div>
+
+  <!-- CREATE / RENAME PLAYLIST MODAL -->
+  <div id="playlist-name-modal"
+    class="modal-wrap fixed inset-0 z-50 items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+  >
+    <div class="w-full max-w-sm bg-white rounded-2xl shadow-2xl overflow-hidden">
+      <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+        <h3 id="playlist-modal-title" class="font-semibold text-gray-900">New Playlist</h3>
+        <button id="playlist-name-modal-close"
+          class="w-7 h-7 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-400 transition-colors"
+        >
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+      <div class="px-6 py-5">
+        <label class="block text-sm font-medium text-gray-700 mb-1">Playlist Name</label>
+        <input id="playlist-name-input" type="text" placeholder="e.g. Morning Yoga"
+          class="w-full px-4 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-red-400"
+        />
+        <p id="playlist-name-error" class="hidden mt-1 text-xs text-red-500">Please enter a name.</p>
+      </div>
+      <div class="px-6 pb-5 flex justify-end gap-2">
+        <button id="playlist-name-cancel"
+          class="px-4 py-2 rounded-lg border border-gray-200 text-sm text-gray-600 hover:bg-gray-50 transition-colors"
+        >Cancel</button>
+        <button id="playlist-name-save"
+          class="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white text-sm font-medium transition-colors"
+        >Create</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ADD TO PLAYLIST PICKER (inline popup) rendered by JS -->
 
   <!-- DOWNLOAD TOAST -->
   <div id="download-toast"
@@ -544,6 +640,7 @@
       const vc = state.viewCounts[video.videoId];
       const el = document.createElement('article');
       el.className = 'card flex flex-col rounded-2xl overflow-hidden bg-white shadow-sm hover:shadow-md transition-shadow border border-gray-100 cursor-pointer';
+      el.style.position = 'relative';
       el.innerHTML = `
         <div class="card-img-wrap bg-gray-100">
           <img src="${video.thumbnail}" alt="${escapeHtml(video.title)}" loading="lazy"/>
@@ -563,6 +660,24 @@
           </div>
           <button class="watch-btn mt-2 w-full py-2 px-4 rounded-lg bg-red-600 hover:bg-red-700 text-white text-sm font-medium transition-colors">Watch</button>
         </div>`;
+
+      // ＋ Add-to-playlist button
+      const addBtn = document.createElement('button');
+      addBtn.className = 'add-btn';
+      addBtn.title = 'Add to playlist';
+      addBtn.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/>
+      </svg>`;
+      const popup = makeAtpPopup(video);
+      el.querySelector('.card-img-wrap').appendChild(addBtn);
+      el.querySelector('.card-img-wrap').appendChild(popup);
+      addBtn.addEventListener('click', e => {
+        e.stopPropagation();
+        if (openAtpPopup && openAtpPopup !== popup) openAtpPopup.classList.remove('open');
+        popup.classList.toggle('open');
+        openAtpPopup = popup.classList.contains('open') ? popup : null;
+      });
+
       el.querySelector('.watch-btn').addEventListener('click', e => { e.stopPropagation(); openVideoModal(video); });
       el.addEventListener('click', () => openVideoModal(video));
       return el;
@@ -612,12 +727,18 @@
 
     // ── View switching ────────────────────────────
     function showView(name) {
-      ['videos','playlists','playlist-detail'].forEach(v => {
+      ['videos','playlists','playlist-detail','my-playlists','my-playlist-detail'].forEach(v => {
         document.getElementById(`view-${v}`).classList.toggle('hidden', v !== name);
       });
-      // Update nav tab styles
+      // Search bar only on videos view
+      const sw = document.getElementById('search-bar-wrap');
+      if (sw) sw.classList.toggle('open', name === 'videos');
+
       document.querySelectorAll('.nav-tab').forEach(btn => {
-        const active = btn.dataset.tab === name || (name === 'playlist-detail' && btn.dataset.tab === 'playlists');
+        const t = btn.dataset.tab;
+        const active = t === name
+          || (name === 'playlist-detail'    && t === 'playlists')
+          || (name === 'my-playlist-detail' && t === 'my-playlists');
         btn.style.color = active ? '#fff' : 'rgba(255,255,255,0.7)';
         btn.style.borderBottomColor = active ? '#fff' : 'transparent';
       });
@@ -936,6 +1057,15 @@
       let html = document.documentElement.outerHTML;
       html = html.replace(/const CHANNELS = \[[\s\S]*?\];/, channelsCode + ';');
 
+      // Bake playlists — replace or insert PL_KEY data as a script tag
+      const plData = JSON.stringify(loadMyPlaylists());
+      const plScript = `<script id="baked-playlists">localStorage.setItem('${PL_KEY}', ${JSON.stringify(plData)});<\/script>`;
+      if (html.includes('id="baked-playlists"')) {
+        html = html.replace(/<script id="baked-playlists">[\s\S]*?<\/script>/, plScript);
+      } else {
+        html = html.replace('</body>', plScript + '\n</body>');
+      }
+
       // Trigger download
       const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
       const url  = URL.createObjectURL(blob);
@@ -1021,6 +1151,8 @@
             showError(err.message);
           }
         }
+
+        if (tab === 'my-playlists') renderMyPlaylists();
       });
     });
 
@@ -1074,6 +1206,277 @@
         if (!state.nextPageToken) this.classList.add('hidden');
       } catch (err) { showError(err.message); }
       finally { state.loading = false; this.innerHTML = 'Load more videos'; this.disabled = false; }
+    });
+
+    // ── My Playlists storage ──────────────────────
+    const PL_KEY = 'yt_my_playlists';
+
+    function loadMyPlaylists() {
+      try { return JSON.parse(localStorage.getItem(PL_KEY) || '[]'); }
+      catch { return []; }
+    }
+    function saveMyPlaylists(list) { localStorage.setItem(PL_KEY, JSON.stringify(list)); }
+    function genId() { return 'pl_' + Date.now() + '_' + Math.random().toString(36).slice(2,7); }
+
+    function createMyPlaylist(name) {
+      const list = loadMyPlaylists();
+      const pl = { id: genId(), name, createdAt: new Date().toISOString(), videos: [] };
+      saveMyPlaylists([...list, pl]);
+      return pl;
+    }
+    function deleteMyPlaylist(id) {
+      saveMyPlaylists(loadMyPlaylists().filter(p => p.id !== id));
+    }
+    function renameMyPlaylist(id, name) {
+      saveMyPlaylists(loadMyPlaylists().map(p => p.id === id ? { ...p, name } : p));
+    }
+    function addVideoToPlaylist(playlistId, video) {
+      const list = loadMyPlaylists();
+      const pl = list.find(p => p.id === playlistId);
+      if (!pl || pl.videos.find(v => v.videoId === video.videoId)) return;
+      pl.videos.push({ ...video, addedAt: new Date().toISOString() });
+      saveMyPlaylists(list);
+    }
+    function removeVideoFromPlaylist(playlistId, videoId) {
+      const list = loadMyPlaylists();
+      const pl = list.find(p => p.id === playlistId);
+      if (!pl) return;
+      pl.videos = pl.videos.filter(v => v.videoId !== videoId);
+      saveMyPlaylists(list);
+    }
+    function isVideoInPlaylist(playlistId, videoId) {
+      const pl = loadMyPlaylists().find(p => p.id === playlistId);
+      return !!pl?.videos.find(v => v.videoId === videoId);
+    }
+
+    // ── My Playlists render ───────────────────────
+    let activeMyPlaylistId = null;
+
+    function renderMyPlaylists() {
+      const grid = document.getElementById('my-playlists-grid');
+      const list = loadMyPlaylists();
+      if (list.length === 0) {
+        grid.innerHTML = `
+          <div class="col-span-4 flex flex-col items-center py-20 text-gray-400">
+            <svg class="w-16 h-16 mb-4 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+            </svg>
+            <p class="text-lg font-medium">No playlists yet</p>
+            <p class="text-sm mt-1">Click <strong>New Playlist</strong> to create one, then add videos using the <strong>+</strong> button on any video card.</p>
+          </div>`;
+        return;
+      }
+      grid.innerHTML = '';
+      list.forEach(pl => {
+        const cover = pl.videos[0]?.thumbnail || '';
+        const el = document.createElement('article');
+        el.className = 'card flex flex-col rounded-2xl overflow-hidden bg-white shadow-sm hover:shadow-md transition-shadow border border-gray-100 cursor-pointer';
+        el.innerHTML = `
+          <div class="card-img-wrap bg-gray-100">
+            ${cover
+              ? `<img src="${cover}" alt="${escapeHtml(pl.name)}" loading="lazy"/>`
+              : `<div class="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-red-50 to-red-100">
+                  <svg class="w-12 h-12 text-red-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                      d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                  </svg>
+                </div>`
+            }
+            <div class="play-overlay">
+              <div class="w-14 h-14 rounded-full bg-white/90 flex items-center justify-center shadow-lg">
+                <svg class="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h8"/>
+                </svg>
+              </div>
+            </div>
+            <div class="playlist-count">${pl.videos.length} video${pl.videos.length !== 1 ? 's' : ''}</div>
+          </div>
+          <div class="flex flex-col flex-1 p-4 gap-2">
+            <h3 class="text-sm font-semibold text-gray-900 line-clamp-2 leading-snug hover:text-red-600 transition-colors">
+              ${escapeHtml(pl.name)}
+            </h3>
+            <p class="text-xs text-gray-400 mt-auto">Created ${formatDate(pl.createdAt)}</p>
+            <button class="open-my-pl-btn mt-2 w-full py-2 px-4 rounded-lg bg-red-600 hover:bg-red-700 text-white text-sm font-medium transition-colors">Open</button>
+          </div>`;
+        el.querySelector('.open-my-pl-btn').addEventListener('click', e => { e.stopPropagation(); openMyPlaylistDetail(pl.id); });
+        el.addEventListener('click', () => openMyPlaylistDetail(pl.id));
+        grid.appendChild(el);
+      });
+    }
+
+    function openMyPlaylistDetail(id) {
+      activeMyPlaylistId = id;
+      const pl = loadMyPlaylists().find(p => p.id === id);
+      if (!pl) return;
+      document.getElementById('my-playlist-title').textContent = pl.name;
+      document.getElementById('my-playlist-count').textContent = `${pl.videos.length} video${pl.videos.length !== 1 ? 's' : ''}`;
+      renderMyPlaylistVideos(pl);
+      showView('my-playlist-detail');
+    }
+
+    function renderMyPlaylistVideos(pl) {
+      const grid = document.getElementById('my-playlist-video-grid');
+      const empty = document.getElementById('my-playlist-empty');
+      grid.innerHTML = '';
+      if (pl.videos.length === 0) { empty.classList.remove('hidden'); return; }
+      empty.classList.add('hidden');
+      pl.videos.forEach(v => {
+        const el = makeVideoCard(v);
+        // Replace Watch button with Watch + Remove row
+        const btnArea = el.querySelector('.watch-btn').parentElement;
+        btnArea.innerHTML = `
+          <div class="flex gap-2 mt-2">
+            <button class="watch-btn flex-1 py-2 px-3 rounded-lg bg-red-600 hover:bg-red-700 text-white text-sm font-medium transition-colors">Watch</button>
+            <button class="rem-btn py-2 px-3 rounded-lg border border-red-200 hover:bg-red-50 text-red-500 text-sm font-medium transition-colors" title="Remove from playlist">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+              </svg>
+            </button>
+          </div>`;
+        el.querySelector('.watch-btn').addEventListener('click', e => { e.stopPropagation(); openVideoModal(v); });
+        el.querySelector('.rem-btn').addEventListener('click', e => {
+          e.stopPropagation();
+          removeVideoFromPlaylist(activeMyPlaylistId, v.videoId);
+          const updated = loadMyPlaylists().find(p => p.id === activeMyPlaylistId);
+          document.getElementById('my-playlist-count').textContent = `${updated.videos.length} video${updated.videos.length !== 1 ? 's' : ''}`;
+          renderMyPlaylistVideos(updated);
+        });
+        grid.appendChild(el);
+      });
+    }
+
+    // ── Add-to-playlist popup ─────────────────────
+    let openAtpPopup = null;
+    document.addEventListener('click', () => {
+      if (openAtpPopup) { openAtpPopup.classList.remove('open'); openAtpPopup = null; }
+    });
+
+    function makeAtpPopup(video) {
+      const popup = document.createElement('div');
+      popup.className = 'atp-popup';
+      popup.addEventListener('click', e => e.stopPropagation());
+
+      function refresh() {
+        const playlists = loadMyPlaylists();
+        popup.innerHTML = `
+          <p class="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-100">Add to playlist</p>
+          ${playlists.length === 0
+            ? `<p class="px-3 py-2 text-xs text-gray-400">No playlists yet.</p>`
+            : playlists.map(pl => {
+                const has = isVideoInPlaylist(pl.id, video.videoId);
+                return `<button data-plid="${pl.id}"
+                  class="atp-item w-full flex items-center gap-2 px-3 py-2 text-left text-sm hover:bg-gray-50 transition-colors ${has ? 'text-red-600 font-medium' : 'text-gray-700'}">
+                  <svg class="w-4 h-4 flex-shrink-0 ${has ? 'text-red-500' : 'text-gray-300'}" fill="${has ? 'currentColor' : 'none'}" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                  </svg>
+                  <span class="truncate">${escapeHtml(pl.name)}</span>
+                </button>`;
+              }).join('')
+          }
+          <div class="border-t border-gray-100 px-3 py-2">
+            <button class="atp-new w-full flex items-center gap-1 text-xs text-red-600 hover:text-red-700 font-medium transition-colors py-1">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+              </svg> New playlist
+            </button>
+          </div>`;
+
+        popup.querySelectorAll('.atp-item').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const plid = btn.dataset.plid;
+            if (isVideoInPlaylist(plid, video.videoId)) {
+              removeVideoFromPlaylist(plid, video.videoId);
+            } else {
+              addVideoToPlaylist(plid, video);
+              showMiniToast(`Added to "${loadMyPlaylists().find(p=>p.id===plid)?.name}"`);
+            }
+            refresh();
+          });
+        });
+        popup.querySelector('.atp-new').addEventListener('click', () => {
+          popup.classList.remove('open'); openAtpPopup = null;
+          openPlaylistNameModal(null, video);
+        });
+      }
+      refresh();
+      return popup;
+    }
+
+    // ── Mini toast (small, auto-hide) ─────────────
+    function showMiniToast(msg) {
+      let t = document.getElementById('mini-toast');
+      if (!t) {
+        t = document.createElement('div');
+        t.id = 'mini-toast';
+        t.className = 'fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-gray-800 text-white text-xs px-4 py-2 rounded-full shadow-lg transition-opacity';
+        document.body.appendChild(t);
+      }
+      t.textContent = msg;
+      t.style.opacity = '1';
+      clearTimeout(t._timer);
+      t._timer = setTimeout(() => { t.style.opacity = '0'; }, 2500);
+    }
+
+    // ── Create / Rename playlist modal ────────────
+    let _playlistModalMode = null; // { mode:'create', pendingVideo } | { mode:'rename', id }
+
+    function openPlaylistNameModal(renameId, pendingVideo = null) {
+      _playlistModalMode = renameId ? { mode: 'rename', id: renameId } : { mode: 'create', pendingVideo };
+      const isRename = !!renameId;
+      const pl = isRename ? loadMyPlaylists().find(p => p.id === renameId) : null;
+      document.getElementById('playlist-modal-title').textContent = isRename ? 'Rename Playlist' : 'New Playlist';
+      document.getElementById('playlist-name-save').textContent   = isRename ? 'Save' : 'Create';
+      document.getElementById('playlist-name-input').value        = pl?.name || '';
+      document.getElementById('playlist-name-error').classList.add('hidden');
+      document.getElementById('playlist-name-modal').classList.add('open');
+      document.body.style.overflow = 'hidden';
+      setTimeout(() => document.getElementById('playlist-name-input').select(), 50);
+    }
+    function closePlaylistNameModal() {
+      document.getElementById('playlist-name-modal').classList.remove('open');
+      document.body.style.overflow = '';
+    }
+
+    document.getElementById('playlist-name-modal-close').addEventListener('click', closePlaylistNameModal);
+    document.getElementById('playlist-name-cancel').addEventListener('click', closePlaylistNameModal);
+    document.getElementById('playlist-name-modal').addEventListener('click', function(e) { if (e.target===this) closePlaylistNameModal(); });
+    document.getElementById('playlist-name-input').addEventListener('keydown', e => {
+      if (e.key === 'Enter') document.getElementById('playlist-name-save').click();
+    });
+
+    document.getElementById('playlist-name-save').addEventListener('click', () => {
+      const name = document.getElementById('playlist-name-input').value.trim();
+      if (!name) { document.getElementById('playlist-name-error').classList.remove('hidden'); return; }
+      if (_playlistModalMode?.mode === 'rename') {
+        renameMyPlaylist(_playlistModalMode.id, name);
+        document.getElementById('my-playlist-title').textContent = name;
+        if (state.activeTab === 'my-playlists') renderMyPlaylists();
+      } else {
+        const pl = createMyPlaylist(name);
+        if (_playlistModalMode?.pendingVideo) {
+          addVideoToPlaylist(pl.id, _playlistModalMode.pendingVideo);
+          showMiniToast(`Added to "${name}"`);
+        }
+        renderMyPlaylists();
+        if (state.activeTab !== 'my-playlists') {
+          state.activeTab = 'my-playlists';
+          showView('my-playlists');
+        }
+      }
+      closePlaylistNameModal();
+    });
+
+    document.getElementById('create-playlist-btn').addEventListener('click', () => openPlaylistNameModal(null));
+    document.getElementById('my-playlist-back-btn').addEventListener('click', () => {
+      showView('my-playlists'); renderMyPlaylists();
+    });
+    document.getElementById('my-playlist-rename-btn').addEventListener('click', () => openPlaylistNameModal(activeMyPlaylistId));
+    document.getElementById('my-playlist-delete-btn').addEventListener('click', () => {
+      const pl = loadMyPlaylists().find(p => p.id === activeMyPlaylistId);
+      if (!pl || !confirm(`Delete playlist "${pl.name}"? This cannot be undone.`)) return;
+      deleteMyPlaylist(activeMyPlaylistId);
+      showView('my-playlists'); renderMyPlaylists();
     });
 
     // ── Search ────────────────────────────────────
