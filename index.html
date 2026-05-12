@@ -413,6 +413,8 @@
     };
 
     // ── Local storage channels ─────────────────────
+    const DEL_KEY = 'yt_deleted_channels';
+
     function loadCustomChannels() {
       try { return JSON.parse(localStorage.getItem(LS_KEY) || '[]'); }
       catch { return []; }
@@ -420,14 +422,31 @@
     function saveCustomChannels(list) {
       localStorage.setItem(LS_KEY, JSON.stringify(list));
     }
+    function loadDeletedHandles() {
+      try { return JSON.parse(localStorage.getItem(DEL_KEY) || '[]'); }
+      catch { return []; }
+    }
+    function saveDeletedHandles(list) {
+      localStorage.setItem(DEL_KEY, JSON.stringify(list));
+    }
     function getAllChannels() {
       const custom = loadCustomChannels();
       const handles = new Set(CHANNELS.map(c => c.handle));
       return [...CHANNELS, ...custom.filter(c => !handles.has(c.handle))];
     }
-    function removeCustomChannel(handle) {
-      const list = loadCustomChannels().filter(c => c.handle !== handle);
-      saveCustomChannels(list);
+    function getAllVisibleChannels() {
+      const deleted = new Set(loadDeletedHandles());
+      return getAllChannels().filter(c => !deleted.has(c.handle));
+    }
+    function deleteChannel(handle) {
+      // Remove from custom list if it's there
+      saveCustomChannels(loadCustomChannels().filter(c => c.handle !== handle));
+      // Mark as deleted
+      const del = loadDeletedHandles();
+      if (!del.includes(handle)) saveDeletedHandles([...del, handle]);
+    }
+    function restoreChannel(handle) {
+      saveDeletedHandles(loadDeletedHandles().filter(h => h !== handle));
     }
 
     // ── Helpers ───────────────────────────────────
@@ -702,45 +721,83 @@
     }
 
     // ── Channels dropdown ─────────────────────────
+    function channelAvatar(ch) {
+      return ch.thumbnail
+        ? `<img src="${ch.thumbnail}" class="w-8 h-8 rounded-full object-cover" alt="${escapeHtml(ch.name)}" />`
+        : `<svg class="w-4 h-4 text-red-600" fill="currentColor" viewBox="0 0 24 24"><path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"/></svg>`;
+    }
+
     function renderChannelsList() {
-      const current = state.handle;
-      const all = getAllChannels().filter(c => c.handle !== current);
-      const custom = new Set(loadCustomChannels().map(c => c.handle));
-      const list = document.getElementById('channels-list');
+      const current  = state.handle;
+      const deleted  = new Set(loadDeletedHandles());
+      const visible  = getAllVisibleChannels().filter(c => c.handle !== current);
+      const hidden   = getAllChannels().filter(c => deleted.has(c.handle)); // deleted ones
+      const list     = document.getElementById('channels-list');
 
-      if (all.length === 0) {
-        list.innerHTML = '<li class="px-4 py-3 text-sm text-gray-400">No other channels yet.</li>';
-        return;
+      let html = '';
+
+      // ── Active channels ──
+      if (visible.length === 0) {
+        html += '<li class="px-4 py-3 text-sm text-gray-400">No other channels. Add one below.</li>';
+      } else {
+        html += visible.map(ch => `
+          <li class="group relative">
+            <div class="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors">
+              <button data-handle="${ch.handle}"
+                class="channel-item flex items-center gap-3 min-w-0 flex-1 text-left"
+              >
+                <div class="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+                  ${channelAvatar(ch)}
+                </div>
+                <div class="min-w-0">
+                  <p class="text-sm font-medium text-gray-900 truncate group-hover:text-red-600 transition-colors">${escapeHtml(ch.name)}</p>
+                  <p class="text-xs text-gray-400">${ch.handle}</p>
+                </div>
+              </button>
+              <button data-del="${ch.handle}"
+                class="del-btn flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-full hover:bg-red-100 text-gray-300 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
+                title="Delete channel"
+              >
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                </svg>
+              </button>
+            </div>
+          </li>
+        `).join('');
       }
-      list.innerHTML = all.map(ch => `
-        <li class="group relative">
-          <button data-handle="${ch.handle}"
-            class="channel-item w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors text-left"
-          >
-            <div class="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
-              ${ch.thumbnail
-                ? `<img src="${ch.thumbnail}" class="w-8 h-8 rounded-full object-cover" alt="${escapeHtml(ch.name)}" />`
-                : `<svg class="w-4 h-4 text-red-600" fill="currentColor" viewBox="0 0 24 24"><path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"/></svg>`
-              }
-            </div>
-            <div class="min-w-0 flex-1">
-              <p class="text-sm font-medium text-gray-900 truncate group-hover:text-red-600 transition-colors">${escapeHtml(ch.name)}</p>
-              <p class="text-xs text-gray-400">${ch.handle}</p>
-            </div>
-            ${custom.has(ch.handle)
-              ? `<button data-del="${ch.handle}" class="del-btn flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-full hover:bg-red-100 text-gray-300 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100" title="Remove">
-                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/>
-                  </svg>
-                </button>`
-              : `<svg class="w-4 h-4 text-gray-300 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
-                </svg>`
-            }
-          </button>
-        </li>
-      `).join('');
 
+      // ── Deleted / hidden channels ──
+      if (hidden.length > 0) {
+        html += `
+          <li>
+            <p class="px-4 pt-3 pb-1 text-xs text-gray-400 font-medium uppercase tracking-wider border-t border-gray-100 mt-1">
+              Deleted channels
+            </p>
+          </li>
+        `;
+        html += hidden.map(ch => `
+          <li class="group">
+            <div class="flex items-center gap-3 px-4 py-2 hover:bg-gray-50 transition-colors opacity-60 hover:opacity-100">
+              <div class="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0 grayscale">
+                ${channelAvatar(ch)}
+              </div>
+              <div class="min-w-0 flex-1">
+                <p class="text-xs font-medium text-gray-500 truncate line-through">${escapeHtml(ch.name)}</p>
+                <p class="text-xs text-gray-400">${ch.handle}</p>
+              </div>
+              <button data-restore="${ch.handle}"
+                class="restore-btn flex-shrink-0 px-2 py-1 rounded-md bg-gray-100 hover:bg-green-100 text-gray-400 hover:text-green-600 text-xs font-medium transition-colors"
+                title="Restore channel"
+              >↩ Restore</button>
+            </div>
+          </li>
+        `).join('');
+      }
+
+      list.innerHTML = html;
+
+      // Open channel in new tab
       list.querySelectorAll('.channel-item').forEach(btn => {
         btn.addEventListener('click', () => {
           const url = `${location.pathname}?handle=${encodeURIComponent(btn.dataset.handle)}`;
@@ -748,10 +805,22 @@
           closeDropdown();
         });
       });
+
+      // Delete button
       list.querySelectorAll('.del-btn').forEach(btn => {
         btn.addEventListener('click', e => {
           e.stopPropagation();
-          removeCustomChannel(btn.dataset.del);
+          if (!confirm(`Remove "${btn.dataset.del}" from the channel list?\n\nYou can restore it anytime, or download the updated HTML to make removal permanent.`)) return;
+          deleteChannel(btn.dataset.del);
+          renderChannelsList();
+        });
+      });
+
+      // Restore button
+      list.querySelectorAll('.restore-btn').forEach(btn => {
+        btn.addEventListener('click', e => {
+          e.stopPropagation();
+          restoreChannel(btn.dataset.restore);
           renderChannelsList();
         });
       });
@@ -840,10 +909,14 @@
 
     // ── Download updated HTML ──────────────────────
     function downloadUpdatedHTML() {
-      // Merge hardcoded + all localStorage channels into one list
-      const custom = loadCustomChannels();
+      // Merge hardcoded + custom, then exclude deleted ones
+      const custom   = loadCustomChannels();
+      const deleted  = new Set(loadDeletedHandles());
       const hardcodedHandles = new Set(CHANNELS.map(c => c.handle));
-      const merged = [...CHANNELS, ...custom.filter(c => !hardcodedHandles.has(c.handle))];
+      const merged = [
+        ...CHANNELS.filter(c => !deleted.has(c.handle)),
+        ...custom.filter(c => !hardcodedHandles.has(c.handle) && !deleted.has(c.handle)),
+      ];
 
       // Build replacement CHANNELS array source code
       const channelsCode = 'const CHANNELS = [\n' +
