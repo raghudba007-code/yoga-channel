@@ -639,8 +639,8 @@
     function makeVideoCard(video) {
       const vc = state.viewCounts[video.videoId];
       const el = document.createElement('article');
-      el.className = 'card flex flex-col rounded-2xl overflow-hidden bg-white shadow-sm hover:shadow-md transition-shadow border border-gray-100 cursor-pointer';
-      el.style.position = 'relative';
+      el.className = 'card flex flex-col rounded-2xl bg-white shadow-sm hover:shadow-md transition-shadow border border-gray-100 cursor-pointer';
+      el.style.cssText = 'position:relative; overflow:visible;';
       el.innerHTML = `
         <div class="card-img-wrap bg-gray-100">
           <img src="${video.thumbnail}" alt="${escapeHtml(video.title)}" loading="lazy"/>
@@ -670,7 +670,7 @@
       </svg>`;
       const popup = makeAtpPopup(video);
       el.querySelector('.card-img-wrap').appendChild(addBtn);
-      el.querySelector('.card-img-wrap').appendChild(popup);
+      el.appendChild(popup); // outside card-img-wrap to avoid overflow:hidden clipping
       addBtn.addEventListener('click', e => {
         e.stopPropagation();
         if (openAtpPopup && openAtpPopup !== popup) openAtpPopup.classList.remove('open');
