@@ -1521,30 +1521,10 @@
       }
 
       videos.forEach(v => {
-        const vc = state.viewCounts[v.videoId];
-        const el = document.createElement('article');
-        el.className = 'card flex flex-col rounded-2xl overflow-hidden bg-white shadow-sm hover:shadow-md transition-shadow border border-gray-100 cursor-pointer';
-        el.innerHTML = `
-          <div class="card-img-wrap bg-gray-100">
-            <img src="${v.thumbnail}" alt="${escapeHtml(v.title)}" loading="lazy"/>
-            <div class="play-overlay">
-              <div class="w-14 h-14 rounded-full bg-white/90 flex items-center justify-center shadow-lg">
-                <svg class="w-6 h-6 text-red-600 ml-1" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-              </div>
-            </div>
-          </div>
-          <div class="flex flex-col flex-1 p-4 gap-2">
-            <h3 class="text-sm font-semibold text-gray-900 line-clamp-2 leading-snug hover:text-red-600 transition-colors">
-              ${highlightMatch(v.title, query)}
-            </h3>
-            <div class="flex items-center justify-between mt-auto">
-              <p class="text-xs text-gray-500">${formatDate(v.publishedAt)}</p>
-              ${vc !== undefined ? `<p class="text-xs text-gray-400">${formatViews(vc)}</p>` : ''}
-            </div>
-            <button class="watch-btn mt-2 w-full py-2 px-4 rounded-lg bg-red-600 hover:bg-red-700 text-white text-sm font-medium transition-colors">Watch</button>
-          </div>`;
-        el.querySelector('.watch-btn').addEventListener('click', e => { e.stopPropagation(); openVideoModal(v); });
-        el.addEventListener('click', () => openVideoModal(v));
+        const el = makeVideoCard(v);
+        // Highlight matched query text in the title
+        const h3 = el.querySelector('h3');
+        if (h3) h3.innerHTML = highlightMatch(v.title, query);
         grid.appendChild(el);
       });
 
